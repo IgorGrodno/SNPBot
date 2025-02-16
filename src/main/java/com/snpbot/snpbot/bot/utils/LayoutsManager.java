@@ -13,7 +13,7 @@ public class LayoutsManager {
     public SendMessage getInlineKeyboard(Long chatId) {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
-        message.setText("Вы даете согласие на обработку персональных данных:");
+        message.setText("Вы даете согласие на обработку персональных данных?");
 
         InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
