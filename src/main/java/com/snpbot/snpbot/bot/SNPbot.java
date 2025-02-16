@@ -1,7 +1,7 @@
 package com.snpbot.snpbot.bot;
 
-import com.snpbot.snpbot.bot.model.Client;
 import com.snpbot.snpbot.bot.service.ClientService;
+import com.snpbot.snpbot.bot.utils.LayoutsManager;
 import com.snpbot.snpbot.bot.utils.WordDocumentCreator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,21 +14,15 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.UserProfilePhotos;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.File;
-
-import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Component
@@ -39,6 +33,9 @@ public class SNPbot extends TelegramLongPollingBot {
 
     @Autowired
     WordDocumentCreator wordDocumentCreator;
+
+    @Autowired
+    LayoutsManager layoutsManager;
     private int fioInrupOperationNumber = 0;
 
     private Map<String, String> clientParameters = new HashMap<>();
@@ -70,7 +67,6 @@ public class SNPbot extends TelegramLongPollingBot {
                 }
                 getUserProfilePhoto(update.getMessage().getFrom().getId());
                 startMessageHandler(update);
-
             }
             if (fioInrupOperationNumber > 0) {
                 switch (fioInrupOperationNumber) {
@@ -90,8 +86,10 @@ public class SNPbot extends TelegramLongPollingBot {
                             sendMessage(update.getMessage().getChatId(), "Введите отчество");
                             fioInrupOperationNumber = 3;
                         } else {
-                            sendMessage(update.getMessage().getChatId(),
-                                    "Фамилия должна содержать больше одного симвода, введите фамилию еще раз");
+                            sendMessage(
+                                    update.getMessage().getChatId(),
+                                    "Фамилия должна содержать больше одного симвода, введите фамилию еще раз"
+                            );
                         }
                         break;
                     case 3:
@@ -108,35 +106,7 @@ public class SNPbot extends TelegramLongPollingBot {
                             try {
                                 LocalDate.parse(update.getMessage().getText(), formatter);
                                 clientParameters.put("birthDate", update.getMessage().getText());
-
-                                SendMessage message = new SendMessage();
-                                message.setChatId(update.getMessage().getChatId());
-                                message.setText("Пожалуйста, выберите пол:");
-
-                                InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
-                                List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
-
-                                InlineKeyboardButton trueButton = new InlineKeyboardButton();
-                                trueButton.setText("Мужской");
-                                trueButton.setCallbackData("TRUE");
-
-                                InlineKeyboardButton falseButton = new InlineKeyboardButton();
-                                falseButton.setText("Женский");
-                                falseButton.setCallbackData("FALSE");
-
-                                List<InlineKeyboardButton> rowInline = new ArrayList<>();
-                                rowInline.add(trueButton);
-                                rowInline.add(falseButton);
-
-                                rowsInline.add(rowInline);
-                                markupInline.setKeyboard(rowsInline);
-                                message.setReplyMarkup(markupInline);
-
-                                try {
-                                    execute(message);
-                                } catch (TelegramApiException e) {
-                                    e.printStackTrace();
-                                }
+                                sendMessage(layoutsManager.getSexChoiseButtons(update.getMessage().getChatId()));
                                 fioInrupOperationNumber = 5;
                             } catch (DateTimeParseException e) {
                                 sendMessage(update.getMessage().getChatId(),
@@ -159,12 +129,12 @@ public class SNPbot extends TelegramLongPollingBot {
             if ("TRUE".equals(callbackData)) {
                 clientParameters.put("sex", "true");
                 fioInrupOperationNumber = 0;
-                createClient(update);
+                sendDocument(chatId, wordDocumentCreator.createDocument(clientService.createClient(clientParameters)));
             }
             if ("FALSE".equals(callbackData)) {
                 clientParameters.put("sex", "false");
                 fioInrupOperationNumber = 0;
-                createClient(update);
+                sendDocument(chatId, wordDocumentCreator.createDocument(clientService.createClient(clientParameters)));
             }
         }
 
@@ -192,75 +162,7 @@ public class SNPbot extends TelegramLongPollingBot {
                 }
             }
         }
-        sendInlineKeyboard(chatId);
-    }
-
-    private void sendMessage(long chatId, String text) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText(text);
-
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void sendInlineKeyboard(Long chatId) {
-        SendMessage message = new SendMessage();
-        message.setChatId(chatId);
-        message.setText("Пожалуйста, выберите действие:");
-
-        InlineKeyboardMarkup markupInline = new InlineKeyboardMarkup();
-        List<List<InlineKeyboardButton>> rowsInline = new ArrayList<>();
-
-        InlineKeyboardButton websiteButton = new InlineKeyboardButton();
-        websiteButton.setText("Перейти на сайт");
-        websiteButton.setUrl("https://github.com/");
-
-        InlineKeyboardButton agreeButton = new InlineKeyboardButton();
-        agreeButton.setText("Согласен ✅");
-        agreeButton.setCallbackData("AGREE");
-
-        List<InlineKeyboardButton> rowInline = new ArrayList<>();
-        rowInline.add(websiteButton);
-        rowInline.add(agreeButton);
-
-        rowsInline.add(rowInline);
-        markupInline.setKeyboard(rowsInline);
-        message.setReplyMarkup(markupInline);
-
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public void downloadFileById(String fileId, Long userId) {
-        try {
-            // Получаем объект файла через Telegram API
-            org.telegram.telegrambots.meta.api.objects.File file = execute(new GetFile(fileId));
-
-            // Формируем URL для скачивания файла
-            String fileUrl = "https://api.telegram.org/file/bot" + getBotToken() + "/" + file.getFilePath();
-            System.out.println("Downloading: " + fileUrl);
-
-            // Скачиваем файл
-            InputStream in = new URL(fileUrl).openStream();
-            FileOutputStream out = new FileOutputStream("user_photos/" + userId + ".jpg");
-
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = in.read(buffer)) != -1) {
-                out.write(buffer, 0, bytesRead);
-            }
-            out.close();
-            in.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        sendMessage(layoutsManager.getInlineKeyboard(chatId));
     }
 
     public void getUserProfilePhoto(Long userId) {
@@ -271,9 +173,46 @@ public class SNPbot extends TelegramLongPollingBot {
             UserProfilePhotos photos = execute(getUserProfilePhotos);
             if (photos.getTotalCount() > 0) {
                 String fileId = photos.getPhotos().get(0).get(0).getFileId();
-                downloadFileById(fileId, userId);
+                org.telegram.telegrambots.meta.api.objects.File file = execute(new GetFile(fileId));
+                String fileUrl = "https://api.telegram.org/file/bot" + getBotToken() + "/" + file.getFilePath();
+                System.out.println("Downloading: " + fileUrl);
+                InputStream in = new URL(fileUrl).openStream();
+                FileOutputStream out = new FileOutputStream("user_photos/" + userId + ".jpg");
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, bytesRead);
+                }
+                out.close();
+                in.close();
                 clientParameters.put("pathtofoto", "user_photos/" + userId + ".jpg");
             }
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void sendMessage(long chatId, String messageText) {
+        SendMessage message = new SendMessage();
+        message.setChatId(chatId);
+        message.setText(messageText);
+
+        try {
+            execute(message);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendMessage(SendMessage message) {
+        try {
+            execute(message);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
@@ -292,42 +231,11 @@ public class SNPbot extends TelegramLongPollingBot {
         sendDocument.setDocument(new InputFile(file));
 
         try {
-            execute(sendDocument); // Отправка документа
+            execute(sendDocument);
             System.out.println("Документ отправлен: " + filePath);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-    }
-
-    private void createClient(Update update) {
-        fioInrupOperationNumber = 0;
-        Client client = new Client();
-        client.setTelegrammUserId(Long.valueOf(clientParameters.get("telegrammuserid")));
-        if (clientParameters.containsKey("username")) {
-            client.setUsername(clientParameters.get("username"));
-        }
-        client.setFirstname(clientParameters.get("firstname"));
-        client.setLastname(clientParameters.get("lastname"));
-        client.setMiddlename(clientParameters.get("middlename"));
-        if (!clientParameters.containsKey("utm_source")) {
-            client.setUtm_source(clientParameters.get("utm_source"));
-        }
-        if (!clientParameters.containsKey("utm_medium")) {
-            client.setUtm_medium(clientParameters.get("utm_medium"));
-        }
-        if (!clientParameters.containsKey("utm_campaign")) {
-            client.setUtm_campaign(clientParameters.get("utm_campaign"));
-        }
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-        client.setBirthDate(LocalDate.parse(clientParameters.get("birthDate"), formatter));
-        client.setSex(Boolean.parseBoolean(clientParameters.get("sex")));
-        if (clientParameters.containsKey("pathtofoto")) {
-            client.setPathtofoto(clientParameters.get("pathtofoto"));
-        }
-        wordDocumentCreator.createDocument(client);
-        clientService.saveClient(client);
-        sendDocument(update.getCallbackQuery().getMessage().getChatId(),
-                "docs/" + client.getTelegrammUserId() + ".docx");
     }
 
 }

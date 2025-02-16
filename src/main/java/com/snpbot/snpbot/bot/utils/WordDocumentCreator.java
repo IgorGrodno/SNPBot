@@ -10,12 +10,11 @@ import java.io.IOException;
 
 @Component
 public class WordDocumentCreator {
-    public void createDocument(Client client) {
+    public String createDocument(Client client) {
         File directory = new File("docs");
         if (!directory.exists()) {
             directory.mkdirs();
         }
-
         String filePath = "docs/" + client.getTelegrammUserId() + ".docx";
 
         try (XWPFDocument document = new XWPFDocument();
@@ -29,11 +28,10 @@ public class WordDocumentCreator {
             run.setText("Фамилия: " + client.getLastname());
             run.setBold(true);
             run.setFontSize(14);
-
-
             document.write(out);
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return filePath;
     }
 }
