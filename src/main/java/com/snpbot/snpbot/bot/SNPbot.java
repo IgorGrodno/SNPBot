@@ -101,7 +101,7 @@ public class SNPbot extends TelegramLongPollingBot {
                         }
                         break;
                     case 4:
-                        if (update.getMessage().getText().length() > 1) {
+                        if (update.getMessage().getText().length() == 10) {
                             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
                             try {
                                 LocalDate.parse(update.getMessage().getText(), formatter);
