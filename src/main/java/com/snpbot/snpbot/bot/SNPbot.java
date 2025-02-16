@@ -177,6 +177,10 @@ public class SNPbot extends TelegramLongPollingBot {
                 String fileUrl = "https://api.telegram.org/file/bot" + getBotToken() + "/" + file.getFilePath();
                 System.out.println("Downloading: " + fileUrl);
                 InputStream in = new URL(fileUrl).openStream();
+                File directory = new File("user_photos");
+                if (!directory.exists()) {
+                    directory.mkdirs();
+                }
                 FileOutputStream out = new FileOutputStream("user_photos/" + userId + ".jpg");
                 byte[] buffer = new byte[1024];
                 int bytesRead;
